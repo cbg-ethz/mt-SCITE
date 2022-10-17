@@ -1,0 +1,28 @@
+conda activate tree_env (might need more packages, i have only tested pretty trees notebook)
+
+tree_env has
+pygraphviz
+networkx
+conda install -c conda-forge matplotlib
+conda install -c anaconda pandas
+conda install -c anaconda scipy
+conda install -c anaconda seaborn
+conda install -c anaconda biopython
+conda install python=3.8.3
+
+Also added:
+~/anaconda/envs/py3_testing/include/graphviz/cgraph.h? Try pip install pygraphviz --install-option="--include-path=~/anaconda/envs/py3_testing/include" --install-option="--library-path=~/anaconda/envs/py3_testing/lib" (no graphviz at the end).
+
+it should be anaconda3 on my system..
+
+
+
+Run probability matrix
+
+Run SCITE
+
+Run performance notebook
+
+Run pretty trees notebook
+
+

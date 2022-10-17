@@ -1,0 +1,7 @@
+ref: "/media/box2/Experiments/Joanna/Snake_analys/j_frisen_1602_bkp/indexfiles/human_g1k_v37_decoy.fasta" 
+#ref: "/media/box4/Experiments/Joanna/screening_mapping/references/GRCh38.primary_assembly.genome.fa" #hg38!
+javaopts: "-Xmx5g -Djava.io.tmpdir=`pwd`/tmp"
+#loci: "loci_data/loci_snp.txt"
+loci: "loci_data/female_gSNVs.txt"
+
+

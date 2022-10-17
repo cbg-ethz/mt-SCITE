@@ -1,0 +1,140 @@
+SAMPLES, = glob_wildcards("data/input/{smp}_R1_001.fastq.gz")
+
+
+rule all:
+    input:
+        expand("data/output/{smp}/trimmed/{smp}_R2_001_val_2.fq.gz", smp=SAMPLES), # file name structure of fastq!
+       # expand("data/output/{smp}/trimmed/{smp}_2_val_2.fq.gz", smp=SAMPLES),       # file name structure of fastq!
+        expand("data/output/{smp}/mapped/{smp}.mapped.bwa.sam", smp=SAMPLES),
+        expand("data/output/{smp}/mapped/{smp}.mapped.bwa.bam", smp=SAMPLES),
+        expand("data/output/{smp}/mapped/{smp}.filtered.bwa.bam", smp=SAMPLES),
+        expand("data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam", smp=SAMPLES),
+        expand("data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam.bai", smp=SAMPLES),
+        #expand("data/output/{smp}/mapped/{smp}_ac.txt", smp=SAMPLES),
+        expand("data/output/{smp}/mapped/{smp}.flagstat", smp=SAMPLES),
+	#expand("data/output/{smp}/mapped/{smp}.bed", smp=SAMPLES)
+
+
+rule trimming:
+    input:
+        fwd_raw = "data/input/{smp}_R1_001.fastq.gz",
+        rev_raw = "data/input/{smp}_R2_001.fastq.gz"
+        #fwd_raw = "data/input/{smp}_1.fastq.gz",
+        #rev_raw = "data/input/{smp}_2.fastq.gz"
+    output:
+        fwd_trim = "data/output/{smp}/trimmed/{smp}_R1_001_val_1.fq.gz",
+        rev_trim = "data/output/{smp}/trimmed/{smp}_R2_001_val_2.fq.gz",
+        #fwd_trim = "data/output/{smp}/trimmed/{smp}_1_val_1.fq.gz",
+        #rev_trim = "data/output/{smp}/trimmed/{smp}_2_val_2.fq.gz",
+    params:
+        "data/output/{smp}/trimmed/"
+    shell:
+        "trim_galore --phred33 --quality 25 --length 20 --paired {input.fwd_raw} {input.rev_raw} --output_dir {params}"
+
+
+
+rule bwa:
+    input:
+        #r1 = "data/output/{smp}/trimmed/{smp}_1_val_1.fq.gz",
+        #r2 = "data/output/{smp}/trimmed/{smp}_2_val_2.fq.gz",
+        r1 = "data/output/{smp}/trimmed/{smp}_R1_001_val_1.fq.gz",
+        r2 = "data/output/{smp}/trimmed/{smp}_R2_001_val_2.fq.gz",
+        ref = config["ref"],
+        index = config["ref"] + ".bwt"
+    output:
+        temp("data/output/{smp}/mapped/{smp}.mapped.bwa.sam")
+    threads: 16
+    params:
+        bwa = "-M",
+    log:
+        bwa = "data/output/{smp}/logs/{smp}.bwa.log",
+    shell:
+        "bwa mem {params.bwa} -t {threads} {input.ref} {input.r1} {input.r2} 2> {log.bwa} > {output}"
+
+
+
+rule sam_to_bam:
+    input:
+        "data/output/{smp}/mapped/{smp}.mapped.bwa.sam"
+    output:
+        temp("data/output/{smp}/mapped/{smp}.mapped.bwa.bam")
+    #params:
+        #java = config["settings"]["javaopts"]
+    log:
+       #"{dir}/logs/picard.sam2bam.{sample}.{mapper}.log"
+    shell:
+        #"picard {params.java} SamFormatConverter INPUT={input} OUTPUT={output} > {log} 2>&1"
+        "samtools view -Sb {input} > {output}"
+
+
+
+rule filter_and_fix:
+    input:
+        "data/output/{smp}/mapped/{smp}.mapped.bwa.bam"
+    output:
+        temp("data/output/{smp}/mapped/{smp}.filtered.bwa.bam")
+    params:
+        #filters = "-b -q 2 -F 8", #for amplicons
+        filters = "-b -q 2 -F 1028", #for WGS,
+        sort = "SORT_ORDER=coordinate",
+        read_groups = "CREATE_INDEX=true RGID={smp} RGLB={smp} RGPL=ILLUMINA RGSM={smp} RGCN=\"NA\" RGPU=\"NA\"",
+        java = config["javaopts"]
+    log:
+        filters = "data/output/{smp}/logs/{smp}.samtools.filters.log",
+        sort = "data/output/{smp}/logs/{smp}.picard.sortsam.log",
+        read_groups = "data/output/{smp}/logs/{smp}.picard.addorreplacereadgroup.log"
+    shell:
+        "samtools view {params.filters} {input} 2> {log.filters} |"
+        "picard {params.java} SortSam {params.sort} INPUT=/dev/stdin OUTPUT=/dev/stdout 2> {log.sort} |"
+        "picard {params.java} AddOrReplaceReadGroups {params.read_groups} INPUT=/dev/stdin OUTPUT={output} 2> {log.read_groups}"
+
+
+
+rule samtools_sort:
+    input:
+        "data/output/{smp}/mapped/{smp}.filtered.bwa.bam"
+    output:
+        "data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam"
+    shell:
+        "samtools sort {input} -o {output}"
+
+
+rule samtools_index:
+    input:
+        "data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam"
+    output:
+        "data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam.bai"
+    shell:
+        "samtools index {input}"
+
+
+rule ac:
+    input:
+        bam = "/media/box2/Experiments/Joanna/Samplix/screening_mapping_output_from_box4/{smp}/mapped/{smp}.filtered.sorted.bwa.bam",
+        index = "/media/box2/Experiments/Joanna/Samplix/screening_mapping_output_from_box4/{smp}/mapped/{smp}.filtered.sorted.bwa.bam.bai",
+        ref = config["ref"],
+        loci = config["loci"]
+    output:
+        "/media/box2/Experiments/Joanna/Samplix/screening_mapping_output_from_box4/{smp}/mapped/{smp}_ac.txt"
+    shell:
+        "alleleCounter -l {input.loci} -r {input.ref} -b {input.bam} -o {output}"
+
+
+
+
+rule flagstat:
+    input: "data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam"
+    output: "data/output/{smp}/mapped/{smp}.flagstat"
+    shell: "samtools flagstat {input} > {output}"
+
+
+
+
+
+rule samtobam:
+    input:
+        "data/output/{smp}/mapped/{smp}.filtered.sorted.bwa.bam"
+    output:
+        "data/output/{smp}/mapped/{smp}.bed"
+    shell:
+        "bamToBed -i {input} > {output}"
