@@ -5,32 +5,32 @@ from scipy.stats import multinomial
 
 NUCLEOTIDES = ['A', 'C', 'G', 'T']
 COUNTS_COLUMNS = ['Count_A', 'Count_C', 'Count_G', 'Count_T']
-FREQ_COLUMNS = ['Freq_A', 'Freq_C', 'Freq_G', 'Freq_T']
+#FREQ_COLUMNS = ['Freq_A', 'Freq_C', 'Freq_G', 'Freq_T']
 PROB_COLUMNS = ['Prob_mutation_A', 'Prob_mutation_C',
                 'Prob_mutation_G', 'Prob_mutation_T']
 
 
-def allele_frequency(cell_counts):
-    """ Compute allele frequency for a cell count matrix.
-
-    Parameters
-    ----------
-    cell_counts : pandas.DataFrame
-        DataFrame with columns `'CHR', 'POS', 'Count_A', 'Count_C',
-        'Count_G', 'Count_T', 'Good_depth'`, and one row per position.
-
-    Returns
-    -------
-    af : pandas.DataFrame
-        DataFrame with allele frequencies for each position.
-
-    """
-    counts_per_position = cell_counts[COUNTS_COLUMNS]
-    tot_counts_per_position = counts_per_position.sum(axis=1)
-    frequencies = counts_per_position.div(tot_counts_per_position, axis=0)
-    frequencies.columns = FREQ_COLUMNS
-    af = pd.concat([cell_counts[['#CHR', 'POS']], frequencies], axis=1)
-    return af
+#def allele_frequency(cell_counts):
+#    """ Compute allele frequency for a cell count matrix.
+#
+#    Parameters
+#    ----------
+#    cell_counts : pandas.DataFrame
+#        DataFrame with columns `'CHR', 'POS', 'Count_A', 'Count_C',
+#        'Count_G', 'Count_T', 'Good_depth'`, and one row per position.
+#
+#    Returns
+#    -------
+#    af : pandas.DataFrame
+#        DataFrame with allele frequencies for each position.
+#
+#    """
+#    counts_per_position = cell_counts[COUNTS_COLUMNS]
+#    tot_counts_per_position = counts_per_position.sum(axis=1)
+#    frequencies = counts_per_position.div(tot_counts_per_position, axis=0)
+#    frequencies.columns = FREQ_COLUMNS
+#    af = pd.concat([cell_counts[['#CHR', 'POS']], frequencies], axis=1)
+#    return af
 
 
 def _log_prob_ABC_no_mutation(
@@ -136,7 +136,8 @@ def nucleotide_mutation_prob(
 
     prob_mutation = cell_counts[['#CHR', 'POS']].copy()
     for col in PROB_COLUMNS:
-        prob_mutation[col] = pd.np.nan
+        #prob_mutation[col] = pd.np.nan
+        prob_mutation[col] = np.nan 
 
     # Positions with missing reference
     missing_ref_mask = reference == 'N'
@@ -248,5 +249,6 @@ def mutation_prob(nucleotide_mutation_prob, reference):
 
     prob_mutation = nucleotide_mutation_prob[['#CHR', 'POS']].copy()
     prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
+    
 
     return prob_mutation
