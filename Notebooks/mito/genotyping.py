@@ -248,7 +248,26 @@ def mutation_prob(nucleotide_mutation_prob, reference):
     p['N'] = np.nan
 
     prob_mutation = nucleotide_mutation_prob[['#CHR', 'POS']].copy()
-    prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
-    
+#    prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
+#    prob_mutation['Prob_mutation'] = 1 - p.loc[p.index, reference.values].values.flatten()
+#    print(p.loc[p.index, reference.values].values.flatten())
+#    idx_p, cols_p = pd.factorize(p[reference.values])
+#    print("1")
+#    print(p.reindex(cols_p, axis=1).to_numpy()[np.arange(len(p)), idx_p])
+    print(1)
+    print(p.lookup(p.index, reference.values)) 
+    print(len(p.lookup(p.index, reference.values)))
+    print(type(p.lookup(p.index, reference.values)))
+    print(2)
+    print(p)
+    print(3)
+    print(reference.values)
+    print(len(reference.values))
+#    df2 = p.melt(p.columns) 
+#    print(df2)
+#    print(df.loc[df2[df2.columns]==df2['variable']]['value'].values)
+#    print("2")    
+
+    quit()
 
     return prob_mutation
