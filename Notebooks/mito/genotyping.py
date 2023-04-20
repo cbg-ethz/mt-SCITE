@@ -56,8 +56,7 @@ def _log_prob_ABC_no_mutation(
        np.dstack([reads_A.tolist(), reads_B.tolist(),
                   reads_C.tolist(), reads_R.tolist()]).squeeze(),
        n=total_reads,
-       #p=[error_rate / 3, error_rate / 3, error_rate / 3, 1 - error_rate] # p interpretation of rho
-       p=[error_rate, error_rate, error_rate, 1 - 3*error_rate] # original interpretation of rho
+       p=[error_rate / 3, error_rate / 3, error_rate / 3, 1 - error_rate] # p interpretation of rho
     )
     return log_prob_ABC
 
@@ -95,8 +94,7 @@ def _log_prob_ABC_with_mutation_at_A(
                    reads_C.tolist(),
                    reads_R.tolist()]).squeeze(),
         n=reads_RBC,
-        #p=[error_rate / 2.0, error_rate / 2.0, 1 - error_rate] # p interpretation of rho
-        p=[error_rate, error_rate, 1 - 2*error_rate] # original interpretation of rho
+        p=[error_rate / 2.0, error_rate / 2.0, 1 - error_rate] # p interpretation of rho
     )
     log_prob_BC[zero_sum_mask] = 0.0
 
