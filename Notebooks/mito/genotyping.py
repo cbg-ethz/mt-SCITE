@@ -36,13 +36,16 @@ PROB_COLUMNS = ['Prob_mutation_A', 'Prob_mutation_C',
 def _log_prob_ABC_no_mutation(
         reads_R, reads_A, reads_B, reads_C, error_rate):
     """ P(reads_A, reads_B, reads_C | reads_R, no mutation)
+
     It does not matter which nucleotides are A, B, and C
+
     Parameters
     ----------
     reads_R : int
         Number of reads for the reference nucleotide
     reads_A, reads_B, reads_C : int
         Number of reads for the non-reference nucleotides
+
     Returns
     -------
     log_prob_ABC : float
@@ -53,7 +56,8 @@ def _log_prob_ABC_no_mutation(
        np.dstack([reads_A.tolist(), reads_B.tolist(),
                   reads_C.tolist(), reads_R.tolist()]).squeeze(),
        n=total_reads,
-       p=[error_rate / 3, error_rate / 3, error_rate / 3, 1 - error_rate]
+       #p=[error_rate / 3, error_rate / 3, error_rate / 3, 1 - error_rate] # p interpretation of rho
+       p=[error_rate, error_rate, error_rate, 1 - 3*error_rate] # original interpretation of rho
     )
     return log_prob_ABC
 
@@ -61,16 +65,20 @@ def _log_prob_ABC_no_mutation(
 def _log_prob_ABC_with_mutation_at_A(
         reads_R, reads_A, reads_B, reads_C, error_rate):
     """ Compute P(reads_A, reads_B, reads_C | reads_R, mutation at A).
+
     A is always the mutated nucleotide.
     R is the reference nucleotide.
     B and C are the remaining nucleotides (which ones it does not matter)
+
     !!! This distribution assumes that reads_A is always > 0 !!!
+
     Parameters
     ----------
     reads_R : int
         Number of reads for the reference nucleotide
     reads_A, reads_B, reads_C : int
         Number of reads for the non-reference nucleotides
+
     Returns
     -------
     log_prob_ABC : float
@@ -87,7 +95,8 @@ def _log_prob_ABC_with_mutation_at_A(
                    reads_C.tolist(),
                    reads_R.tolist()]).squeeze(),
         n=reads_RBC,
-        p=[error_rate / 2.0, error_rate / 2.0, 1 - error_rate]
+        #p=[error_rate / 2.0, error_rate / 2.0, 1 - error_rate] # p interpretation of rho
+        p=[error_rate, error_rate, 1 - 2*error_rate] # original interpretation of rho
     )
     log_prob_BC[zero_sum_mask] = 0.0
 
@@ -102,6 +111,7 @@ def nucleotide_mutation_prob(
         error_rate_when_mutation,
         p_mutation):
     """ Compute P(mutation at X | read counts).
+
     Parameters
     ----------
     cell_counts : pd.DataFrame
@@ -118,6 +128,7 @@ def nucleotide_mutation_prob(
         non-reference nucleotide
     p_mutation : float
         Probability of a mutation at one position
+
     Returns
     -------
     prob_mutation : pd.DataFrame
@@ -210,6 +221,7 @@ def nucleotide_mutation_prob(
 
 def mutation_prob(nucleotide_mutation_prob, reference):
     """ Compute P(mutation | read counts) given P(mutation at X | read counts).
+
     Parameters
     ----------
     nucleotide_mutation_prob : pd.DataFrame
@@ -221,6 +233,7 @@ def mutation_prob(nucleotide_mutation_prob, reference):
     reference : pd.Series
         Series containing the name of the reference nucleotide (`'A'`,
         `'C'`, `'G'`, `'T'`, or `'N'` for unknown)
+
     Returns
     -------
     prob_mutation : pd.DataFrame
@@ -236,9 +249,8 @@ def mutation_prob(nucleotide_mutation_prob, reference):
     # Handle unknown references
     p['N'] = np.nan
 
-    #prob_mutation = nucleotide_mutation_prob[['#CHR', 'POS']].copy()
-    #prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
     prob_mutation = nucleotide_mutation_prob[['#CHR', 'POS']].copy()
-    prob_mutation['Prob_mutation'] = 1 - p.apply(lambda row: row[reference[row.name]], axis=1)
+    prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
+    
 
     return prob_mutation
