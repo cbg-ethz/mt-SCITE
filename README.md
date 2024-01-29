@@ -1,4 +1,4 @@
-# Tree inference from_mitochondrial mutations
+# Tree inference from mitochondrial mutations
 Code to run mt-SCITE and perform downstream analysis of mitochondrial lineages. Requires [mt-SCITE](https://github.com/joannahard/mt-SCITE). 
 
 ## Environment
