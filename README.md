@@ -1,7 +1,8 @@
-# Tree_inference_from_mitochondrial_mutations
+# Tree inference from_mitochondrial mutations
 Code to run mt-SCITE and perform downstream analysis of mitochondrial lineages. Requires [mt-SCITE](https://github.com/joannahard/mt-SCITE). 
 
 ## Environment
+```
 conda create -n mtSCITE python=3.10
 conda install -c conda-forge biopython
 conda install -c anaconda pandas
@@ -14,6 +15,7 @@ conda install -c anaconda python-graphviz
 conda install -c anaconda pydot
 conda install -c anaconda networkx
 conda install -c anaconda numpy=1.22
+```
 
 ## Workflow
 * Generate allele count files with preprocessing_pipeline/Snakefile
