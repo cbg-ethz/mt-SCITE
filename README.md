@@ -47,12 +47,14 @@ python scripts/cv.py </path/to/matrices/> </path/to/mtscite>
 ```
 This will create a CSV file named `val_scores.csv` with the 3-fold cross-validation likelihood scores. 
 
-`learn_error_rate.ipynb` was run to analyze `val_scores.csv` and to select the error rate to be used for tree generation
+`learn_error_rate.ipynb` was run to analyze `val_scores.csv` and to select the error rate to be used for tree building.
 
 ### Build trees
 
 Run mt-SCITE with this command:
+```
 `</path/to/mtscite> -i pmat.csv -n <n_mutations> -m <n_samples> -r 1 -l 200000 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o </path/to/output/run_id>`
+```
 
 where 
 `pmat.csv` is the mutation probability matrix generated with the learned error rate, `n_mutations` is the number of rows in `pmat.csv` and `n_samples` is the number of columns in `pmat.csv`.
