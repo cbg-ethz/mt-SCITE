@@ -4,10 +4,12 @@ library(ggplot2)
 library(patchwork)
 library(EnsDb.Hsapiens.v75)
 library(ape)
+library(dplyr)
+library(stringr)
 
+# Obtain heteroplasmy matrix using Signac following https://stuartlab.org/signac/articles/mito.html
 # read the mitochondrial data
-tf1.data <- ReadMGATK(dir = "/Users/johard/Documents/mgatk_for_mtSCITE_ms/data/mgatk_yfv2001_ouput/final/")
-
+tf1.data <- ReadMGATK(dir = "../../yfv2001/mgatk_yfv2001_ouput/final/")
 
 # create a Seurat object
 tf1 <- CreateSeuratObject(
@@ -16,12 +18,9 @@ tf1 <- CreateSeuratObject(
   assay = "mito"
 )
 
-
+# Call variants
 DefaultAssay(tf1) <- "mito"
 variants <- IdentifyVariants(tf1, refallele = tf1.data$refallele)
-
-
-VariantPlot(variants)
 
 # At least two cells share mutation
 high.conf <- subset(
@@ -30,41 +29,62 @@ high.conf <- subset(
     vmr > 0.01
 )
 
-
+# Compute allele frequencies
 tf1 <- AlleleFreq(tf1, variants = high.conf$variant, assay = "mito")
-tf1[["alleles"]]
 
-
+# Turn to procedure used in https://github.com/caleblareau/mtscATACpaper_reproducibility/blob/master/figures_TF1_GM11906_mixing/code/22_TF1_visualize_variants.R
 DefaultAssay(tf1) <- "alleles"
-tf1 <- FindClonotypes(tf1)
+af_filter_mat <- GetAssayData(object = tf1) 
 
+# Get clusters
+seuratSNN <- function(matSVD, resolution = 1, k.param = 10){ 
+  set.seed(1)
+  rownames(matSVD) <- make.unique(rownames(matSVD))
+  obj <- FindNeighbors(matSVD, k.param = k.param, annoy.metric = "cosine")
+  clusters <- FindClusters(object = obj$snn, resolution = resolution)
+  return(as.character(clusters[,1]))
+}
 
-table(Idents(tf1))
+# Run clustering on square root heteroplasmies
+cl <- seuratSNN(sqrt(t(af_filter_mat)), 1.0, 10)
+cl <- str_pad(cl, 2, pad = "0")
 
+names_clusters <- unique(cl)
 
+afp <- af_filter_mat
+aftree <- afp
+afp[afp < 0.01] <- 0
+afp[afp > 0.1] <- 0.1
 
-DoHeatmap(tf1, features = VariableFeatures(tf1), slot = "data", disp.max = 0.1) +
-  scale_fill_viridis_c()
+df <- data.frame(
+  cell_id = colnames(afp), 
+  cluster_id = as.character(cl)
+) %>% arrange(cl)
 
+# Get group means 
+matty <- sapply(names_clusters, function(cluster){
+  cells <- df %>% dplyr::filter(cluster_id == cluster) %>% pull(cell_id) %>% as.character()
+  Matrix::rowMeans(sqrt(afp[,cells]))
+})
 
+# Do cosine distance; note that we used sqrt transformation already 
+mito.hc <- hclust(dist(lsa::cosine((matty))))
 
-###### TREE BUILDING SEURAT #######
-tf1 <- BuildClusterTree(object = tf1)
-PlotClusterTree(object = tf1)
-
-
-
-# Save purity data
-
-# Get the output of Idents(tf1)
-sample_idents <- Idents(tf1)
+# TODO: compute and save purity data
 
 # Define the file path where you want to save the output
-file_path <- "/Users/johard/Documents/mgatk_for_mtSCITE_ms/YFV2001_clusters.txt"
+cluster_file_path <- "../../yfv2001/YFV2001_clusters.txt"
+tree_file_path <- "../../yfv2001/YFV2001_tree.pdf"
 
-# Write the output to a text file
-write.table(sample_idents, file = file_path, sep = "\t", col.names = TRUE, row.names = TRUE, quote = FALSE)
+# Write the clusters to a text file
+write.table(df, file = cluster_file_path, sep = "\t", col.names = TRUE, row.names = TRUE, quote = FALSE)
+
+# Write the tree to pdf
+pdf(tree_file_path, width = 5, height = 5)
+plot(mito.hc)
+dev.off()
 
 # Print a message indicating the file has been saved
-print(paste("Idents(tf1) saved as", file_path))
+print(paste("Cluster assignments saved at", cluster_file_path))
+print(paste("Tree saved at", tree_file_path))
 
