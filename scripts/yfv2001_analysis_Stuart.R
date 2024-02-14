@@ -9,7 +9,10 @@ library(stringr)
 
 # Obtain heteroplasmy matrix using Signac following https://stuartlab.org/signac/articles/mito.html
 # read the mitochondrial data
-tf1.data <- ReadMGATK(dir = "../../yfv2001/mgatk_yfv2001_ouput/final/")
+#tf1.data <- ReadMGATK(dir = "../../yfv2001/mgatk_yfv2001_ouput/final/")
+tf1.data <- ReadMGATK(dir = "/Users/johard/Documents/mgatk_for_mtSCITE_ms/data/mgatk_yfv2001_ouput/final/")
+
+
 
 # create a Seurat object
 tf1 <- CreateSeuratObject(
@@ -73,8 +76,13 @@ mito.hc <- hclust(dist(lsa::cosine((matty))))
 # TODO: compute and save purity data
 
 # Define the file path where you want to save the output
-cluster_file_path <- "../../yfv2001/YFV2001_clusters.txt"
-tree_file_path <- "../../yfv2001/YFV2001_tree.pdf"
+#cluster_file_path <- "../../yfv2001/YFV2001_clusters.txt"
+cluster_file_path <- "/Users/johard/Documents/mgatk_for_mtSCITE_ms/output/YFV2001_clusters.txt"
+
+#tree_file_path <- "../../yfv2001/YFV2001_tree.pdf"
+tree_file_path <- "/Users/johard/Documents/mgatk_for_mtSCITE_ms/output/YFV2001_tree.pdf"
+
+
 
 # Write the clusters to a text file
 write.table(df, file = cluster_file_path, sep = "\t", col.names = TRUE, row.names = TRUE, quote = FALSE)
