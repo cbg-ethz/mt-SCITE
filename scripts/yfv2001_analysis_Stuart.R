@@ -23,7 +23,7 @@ variants <- IdentifyVariants(tf1, refallele = tf1.data$refallele)
 
 VariantPlot(variants)
 
-# At least two cells should share mutation
+# At least two cells share mutation
 high.conf <- subset(
   variants, subset = n_cells_conf_detected >= 2 &
     strand_correlation >= 0.65 &
