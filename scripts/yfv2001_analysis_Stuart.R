@@ -23,8 +23,9 @@ variants <- IdentifyVariants(tf1, refallele = tf1.data$refallele)
 
 VariantPlot(variants)
 
+# At least two cells should share mutation
 high.conf <- subset(
-  variants, subset = n_cells_conf_detected >= 5 &
+  variants, subset = n_cells_conf_detected >= 2 &
     strand_correlation >= 0.65 &
     vmr > 0.01
 )
@@ -50,7 +51,6 @@ DoHeatmap(tf1, features = VariableFeatures(tf1), slot = "data", disp.max = 0.1) 
 ###### TREE BUILDING SEURAT #######
 tf1 <- BuildClusterTree(object = tf1)
 PlotClusterTree(object = tf1)
-
 
 
 
