@@ -48,7 +48,6 @@ tf1 <- BuildClusterTree(object = tf1)
 PlotClusterTree(object = tf1)
 
 
-
 # Save purity data
 
 # Get the output of Idents(tf1)
