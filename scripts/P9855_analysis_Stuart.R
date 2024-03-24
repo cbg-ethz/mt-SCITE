@@ -89,8 +89,10 @@ write.table(df, file = cluster_file_path, sep = "\t", col.names = TRUE, row.name
 
 # Write the tree to pdf
 pdf(tree_file_path, width = 5, height = 5)
-plot(mito.hc)
+#plot(mito.hc)
+plot(as.dendrogram(mito.hc), type = "rectangle")
 dev.off()
+
 
 # Print a message indicating the file has been saved
 print(paste("Cluster assignments saved at", cluster_file_path))
