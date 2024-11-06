@@ -224,7 +224,7 @@ double** getlog_doubleMatrix(double** matrix, int n, int m){
 double** getlog_complement_doubleMatrix(double** matrix, int n, int m){
 
     double** logcompmatrix = allocate_doubleMatrix(n, m);     // allocate
-    const double epsilon = 1e-6;  // Small value to clamp just below 1.0
+    const double epsilon = std::numeric_limits<double>::epsilon();  // Smallest possible double
 
     for (int i=0; i<n; ++i)             // initialize
     {
