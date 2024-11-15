@@ -248,7 +248,10 @@ def mutation_prob(nucleotide_mutation_prob, reference):
     p['N'] = np.nan
 
     prob_mutation = nucleotide_mutation_prob[['#CHR', 'POS']].copy()
-    prob_mutation['Prob_mutation'] = 1 - p.lookup(p.index, reference.values)
+    prob_mutation['Prob_mutation'] = [
+        1 - p.loc[idx, ref] if ref in p.columns else np.nan
+        for idx, ref in zip(p.index, reference)
+    ]
     
 
     return prob_mutation
