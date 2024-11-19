@@ -50,6 +50,7 @@ double priorSd = 0.1;
 string fileName;      // data file
 string outFile;       // the name of the outputfile, only the prefix before the dot
 int n;                // number of genes
+int n2; 							// number of genes in input tree
 int m;                // number of samples
 char scoreType = 's';
 int rep;            // number of repetitions of the MCMC
@@ -108,7 +109,12 @@ int main(int argc, char* argv[])
 
 	/** get the true parent vector from GraphViz file if available (for simulated data only)  **/
 	int* trueParentVec = NULL;
-	if(trueTreeComp==true){ trueParentVec = getParentVectorFromGVfile(trueTreeFileName, n); }
+	if(trueTreeComp==true){
+		cout << "Using " << n2 << " genes for tree scoring" << endl;
+		trueParentVec = getParentVectorFromGVfile(trueTreeFileName, n2);
+		double trueTreeLogScore = scoreTreeFast2(n, m, logAltLL, logRefLL, scoreType, trueParentVec, n2);
+		cout << "True tree score:\t" << trueTreeLogScore << endl;
+	}
 
 	/**  Find best scoring trees by MCMC  **/
 	cout << "running MCMC now..." << endl;
@@ -275,6 +281,8 @@ int readParameters(int argc, char* argv[]){
 			if (i + 1 < argc) { outFile = argv[++i];}
 		} else if(strcmp(argv[i], "-n")==0) {
 			if (i + 1 < argc) { n = atoi(argv[++i]);}
+		} else if(strcmp(argv[i], "-n2")==0) {
+			if (i + 1 < argc) { n2 = atoi(argv[++i]);}
 		} else if(strcmp(argv[i], "-m")==0) {
 			if (i + 1 < argc) { m = atoi(argv[++i]);}
 		} else if(strcmp(argv[i], "-r") == 0) {
