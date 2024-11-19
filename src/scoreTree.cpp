@@ -42,9 +42,9 @@ double scoreTree(int n, int m, double** logScores, int** dataMatrix, char type, 
 }
 
 /* Computes the score of a new candidate tree. First a fast approximate score is computed.... TODO: the accurate calculations in the if case should be implemented later */
-double scoreTree2(int n, int m, double** logAltLL, double** logRefLL, char type, int* parentVector, double bestTreeLogScore){
+double scoreTree2(int n, int m, double** logAltLL, double** logRefLL, char type, int* parentVector, double bestTreeLogScore, int n2){
 
-    double approx = scoreTreeFast2(n, m, logAltLL, logRefLL, type, parentVector);   // approximate score
+    double approx = scoreTreeFast2(n, m, logAltLL, logRefLL, type, parentVector, n2);   // approximate score
 
     //if(approx > bestTreeLogScore-epsilon){                                                  // approximate score is close to or better
     //	return scoreTreeAccurate(n, m, logScores, dataMatrix, type, parentVector);   // than the current best score, use accurate
@@ -75,13 +75,13 @@ double scoreTreeFast(int n, int m, double** logScores, int** dataMatrix, char ty
 }
 
 /* computes an approximate score for a tree. This is fast, but rounding errors can occur  */
-double scoreTreeFast2(int n, int m, double** logAltLL, double** logRefLL, char type, int* parentVector){
+double scoreTreeFast2(int n, int m, double** logAltLL, double** logRefLL, char type, int* parentVector, int n2){
 
     double result = -DBL_MAX;
-    int* bft = getBreadthFirstTraversal(parentVector, n);   // get breadth first traversal for simple scoring
+    int* bft = getBreadthFirstTraversal(parentVector, n2);   // get breadth first traversal for simple scoring
                                                             // by updating the parent score
     //if(type=='m'){
-        result = maxScoreTreeFast2(n, m, logAltLL, logRefLL, parentVector, bft);  // score by best attachment point per sample
+        result = maxScoreTreeFast2(n, m, logAltLL, logRefLL, parentVector, bft, n2);  // score by best attachment point per sample
     //}
     //else if(type=='s'){
     //	result = sumScoreTreeFast(n, m, logScores, dataMatrix, parentVector, bft);  // score by summing over all attachment points
@@ -106,13 +106,13 @@ double maxScoreTreeFast(int n, int m, double** logScores, int** dataMatrix, int*
 }
 
 /* computes an approximate scoring for a tree using the max attachment score per sample */
-double maxScoreTreeFast2(int n, int m, double** logAltLL, double** logRefLL, int* parent, int* bft){
+double maxScoreTreeFast2(int n, int m, double** logAltLL, double** logRefLL, int* parent, int* bft, int n2){
 
     double treeScore = 0.0;
 
     for(int sample=0; sample<m; sample++){                                                      // for all samples get
-        double* scores = getAttachmentScoresFast2(parent,n, logAltLL[sample], logRefLL[sample], bft);  // all attachment scores
-        treeScore +=  getMaxEntry(scores, n+1);
+        double* scores = getAttachmentScoresFast2(parent,n, logAltLL[sample], logRefLL[sample], bft, n2);  // all attachment scores
+        treeScore +=  getMaxEntry(scores, n2+1);
         //cout << sample << ": " << getMaxEntry(scores, n+1) << endl;
         delete [] scores;
     }
@@ -156,17 +156,23 @@ double* getAttachmentScoresFast(int*parent, int n, double** logScores, int* data
 }
 
 /* computes the attachment scores of a sample to all nodes in the tree (except root) */
-double* getAttachmentScoresFast2(int*parent, int n, double* logAltLLvector, double* logRefLLvector, int*bft){
+double* getAttachmentScoresFast2(int*parent, int n, double* logAltLLvector, double* logRefLLvector, int*bft, int n2){
 
-    double* attachmentScore = init_doubleArray(n+1, -DBL_MAX);
-    attachmentScore[n] = rootAttachementScore2(n, logRefLLvector);
-    for(int i=1; i<=n; i++){                                                              // try all attachment points (nodes in the mutation tree)
+    double* attachmentScore = init_doubleArray(n2+1, -DBL_MAX);
+    attachmentScore[n2] = rootAttachementScore2(n, logRefLLvector);
+    for(int i=1; i<=n2; i++){                                                              // try all attachment points (nodes in the mutation tree)
         int node = bft[i];
         attachmentScore[node] = attachmentScore[parent[node]];
         attachmentScore[node] -= logRefLLvector[node];                 // log score of mutation absence
         attachmentScore[node] += logAltLLvector[node];                   // log score of mutation presence
         //cout << attachmentScore[node] << " ";
     }
+
+		// if (n2 < n){
+		// 		for(int i=n2; i < n; i++) {
+		// 			attachmentScore[i] = logRefLLvector[i];
+		// 		}
+		// }
     //cout << endl;
     return attachmentScore;
 }
@@ -385,3 +391,4 @@ void printLogScores(double** logScores){
 		cout << "\n";
 	}
 }
+
