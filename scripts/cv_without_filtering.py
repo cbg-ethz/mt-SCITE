@@ -5,6 +5,7 @@ from os import listdir
 from os.path import isfile, join
 from subprocess import PIPE, run
 import pandas as pd
+import glob
 
 
 
@@ -18,7 +19,7 @@ def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", 
     print(n, m)
     cmd = f"{bin_path} -i mat{suffix}.txt -n {n} -n2 {n2} -m {m} -t {tree_path} -r 1 -l 0 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o output{suffix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
-    os.remove(f'mat{suffix}.txt')
+
     out = result.stdout
     out = out.split('\n')
     score = -1
@@ -26,6 +27,19 @@ def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", 
         if "True tree score:" in line:
             score = np.mean([float(x) for x in line.split('\t')[1:]])
             break
+
+    if score == -1:
+        raise RuntimeError(
+        "Error: mtSCITE did not run successfully or its output is missing the line 'True tree score'. "
+        "Please check the command output and ensure the binary is functioning as expected. "
+        f"Command output:\n{result.stdout}\nCommand error:\n{result.stderr}"
+    )
+    
+    # Remove intermediate files
+    os.remove(f'mat{suffix}.txt')
+    for file_path in glob.glob('learned*_*_map*.*'):
+        os.remove(file_path)
+
     return float(score)
 
 def learn_mtscite(mat, bin_path="./mtscite", l=200000, seed=1, suffix="temp", **kwargs):
@@ -43,6 +57,14 @@ def learn_mtscite(mat, bin_path="./mtscite", l=200000, seed=1, suffix="temp", **
         if "best log score for tree:" in line:
             score = line.split('\t')[1]
             break
+
+    if score == -1:
+        raise RuntimeError(
+        "Error: mtSCITE did not run successfully or its output is missing the line 'True tree score'. "
+        "Please check the command output and ensure the binary is functioning as expected. "
+        f"Command output:\n{result.stdout}\nCommand error:\n{result.stderr}"
+    )
+
     return f"learned{suffix}_map0.gv", float(score)
 
 def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
@@ -52,10 +74,12 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     if X.shape[0] < 10: # don't learn
         return None
 
+    suffix = f"_{rate}"
+    
     val_scores = []
     if k == 1:
         tree_path, val_ll = learn_mtscite(X, **kwargs)
-        val_ll = score_tree(X, tree_path, suffix=f"_{rate}", **kwargs)
+        val_ll = score_tree(X, tree_path, suffix=suffix, **kwargs)
         val_ll = val_ll / X.size
         val_scores.append(val_ll)
         return val_scores
@@ -70,6 +94,8 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
         val_ll = score_tree(test_data, tree_path, X.shape[0], suffix=f"_{rate}", **kwargs)
         # Store ll on complete test data divided by its size
         val_scores.append(val_ll/test_data.size)
+        os.remove(f'learned{suffix}_{i}.samples')
+
     return val_scores
 
 
