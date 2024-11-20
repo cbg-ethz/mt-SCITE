@@ -218,7 +218,7 @@ std::string runMCMC2(vector<struct Tree>& bestTrees, int noOfReps, int noOfLoops
         //remove//double currBeta = betaPriorMean;                                                                                  // the current AD rate
         double currTreeLogScore;
         //if(treeType=='m'){ //remove//currTreeLogScore = scoreTreeAccurate( n, m, currLogScores, dataMatrix, scoreType, currTreeParentVec);
-            currTreeLogScore = scoreTreeFast2(n, m, logAltLL, logRefLL, scoreType, currTreeParentVec);
+            currTreeLogScore = scoreTreeFast2(n, m, logAltLL, logRefLL, scoreType, currTreeParentVec, n);
         //}
         //else{              currTreeLogScore = getBinTreeScore(dataMatrix, n, m, currLogScores, currTreeParentVec);}
         double currScore = currTreeLogScore;                                                         // combined score of current tree and current beta
@@ -233,7 +233,7 @@ std::string runMCMC2(vector<struct Tree>& bestTrees, int noOfReps, int noOfLoops
             double propTreeLogScore;
             //if(treeType=='m'){
                 propTreeParVec = proposeNewTree(moveProbs, n, currTreeAncMatrix, currTreeParentVec, nbhcorrection);              // propose new tree and
-                propTreeLogScore = scoreTree2( n, m, logAltLL, logRefLL, scoreType, propTreeParVec, bestTreeLogScore);    //  get the new tree score
+                propTreeLogScore = scoreTree2( n, m, logAltLL, logRefLL, scoreType, propTreeParVec, bestTreeLogScore, n);    //  get the new tree score
                 for(int i=0; i<n; i++){
                 	cout << std::setprecision(20) << propTreeParVec[i] << " ";
                 }
@@ -396,3 +396,4 @@ int getSimpleDistance(int* trueVector, int* predVector, int length){
 	}
 	return dist;
 }
+

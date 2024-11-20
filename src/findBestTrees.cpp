@@ -52,10 +52,10 @@ string outFile;       // the name of the outputfile, only the prefix before the 
 int n;                // number of genes
 int n2; 							// number of genes in input tree
 int m;                // number of samples
-char scoreType = 's';
+char scoreType = 'm';
 int rep;            // number of repetitions of the MCMC
 int loops;          // number of loops within a MCMC
-double gamma = 1;
+double _gamma = 1;
 double fd;          // rate of false discoveries (false positives 0->1)
 double ad1;          // rate of allelic dropout (false negatives 1->0)
 double ad2 = 0.0;         // rate of allelic dropout (2->1)
@@ -66,7 +66,7 @@ bool useGeneNames = false;        // use gene names in tree plotting
 string geneNameFile;              // file where the gene names are listed.
 bool trueTreeComp = false;      // set to true if true tree is given as parameter for comparison
 string trueTreeFileName;        // optional true tree
-bool attachSamples = true;       // attach samples to the tree
+bool attachSamples = false;       // attach samples to the tree
 bool useFixedSeed = false;      // use a predefined seed for the random number generator
 unsigned int fixedSeed = 1;   // default seed
 bool useTreeList = true;
@@ -118,8 +118,8 @@ int main(int argc, char* argv[])
 
 	/**  Find best scoring trees by MCMC  **/
 	cout << "running MCMC now..." << endl;
-    //remove//sampleOutput = runMCMCbeta(optimalTrees, errorRates, rep, loops, gamma, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd, useTreeList, treeType);
-    sampleOutput2 = runMCMC2(optimalTrees2, rep, loops, gamma, moveProbs, n, m, logAltLL, logRefLL, scoreType, trueParentVec, sampleStep, sample, useTreeList, treeType);
+    //remove//sampleOutput = runMCMCbeta(optimalTrees, errorRates, rep, loops, _gamma, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd, useTreeList, treeType);
+    sampleOutput2 = runMCMC2(optimalTrees2, rep, loops, _gamma, moveProbs, n, m, logAltLL, logRefLL, scoreType, trueParentVec, sampleStep, sample, useTreeList, treeType);
 
 	/***  output results  ***/
 
@@ -139,8 +139,9 @@ int main(int argc, char* argv[])
     int outputSize = optimalTrees2.size();
 	if(maxTreeListSize >=0) {outputSize = maxTreeListSize;}            // there is a limit on the number of trees to output
 	for(int i=0; i<outputSize; i++){
+		int* parentVector = optimalTrees2.at(i).tree;
+		cout << "Best tree number " << i << ":" << endl;
 
-        int* parentVector = optimalTrees2.at(i).tree;
 		bool** ancMatrix = parentVector2ancMatrix(parentVector, parentVectorSize);
 		vector<vector<int> > childLists = getChildListFromParentVector(parentVector, parentVectorSize);
 
@@ -218,7 +219,6 @@ int* getParentVectorFromGVfile(string fileName, int n){
 	        lines.push_back(line);
 	}
 	for(int i=0; i < lines.size(); i++){
-
 		std::size_t found = lines[i].find(" -> ");
 		if (found!=std::string::npos){
 			int parent = atoi(lines[i].substr(0, found).c_str());
@@ -290,7 +290,7 @@ int readParameters(int argc, char* argv[]){
 		} else if(strcmp(argv[i], "-l")==0) {
 			if (i + 1 < argc) { loops = atoi(argv[++i]);}
 		} else if(strcmp(argv[i], "-g")==0) {
-			if (i + 1 < argc) { gamma = atof(argv[++i]);}
+			if (i + 1 < argc) { _gamma = atof(argv[++i]);}
 		} else if(strcmp(argv[i], "-fd")==0) {
 			if (i + 1 < argc) { fd = atof(argv[++i]);}
 		} else if(strcmp(argv[i],"-ad")==0) {
