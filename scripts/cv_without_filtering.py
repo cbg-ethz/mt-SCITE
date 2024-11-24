@@ -150,4 +150,4 @@ if __name__ == "__main__":
         df = pd.DataFrame(val_scores)
         df_list.append(df)
     full_df = pd.concat(df_list)
-    df.to_csv(os.path.join(output_dir, 'val_scores.txt'))
+    full_df.to_csv(os.path.join(output_dir, 'val_scores.txt'))
