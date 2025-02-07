@@ -1,12 +1,14 @@
 import numpy as np
 from sklearn.model_selection import KFold
 import os
+import re
 from os import listdir
 from os.path import isfile, join
 from subprocess import PIPE, run
 import pandas as pd
 import glob
-
+import networkx as nx
+from networkx.drawing.nx_pydot import write_dot
 
 
 
@@ -82,13 +84,30 @@ def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000
     os.remove(f'{output_prefix}_map0.newick')
     return f"{output_prefix}_map0.gv", float(score)
 
+def generate_star_tree(num_mutations):
+
+    star_tree = nx.DiGraph()
+    center_node = num_mutations + 1
+    star_tree.add_edges_from((center_node, i) for i in range(1, num_mutations + 1))
+
+    return star_tree
+
 def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
+    print(f"error comes: {data_path}")
     X = np.loadtxt(data_path, delimiter=' ')
 
-    if X.shape[0] < 10: # don't learn
+    num_mutations = X.shape[0]
+    
+    if num_mutations < 10: # don't learn
         return None
+
+    # generate star tree to normalise against
+    star_tree = generate_star_tree(num_mutations)
+    star_tree_file_path = os.path.join(output_dir, "star_tree.gv")
+    write_dot(star_tree, star_tree_file_path)
     
     val_scores = []
+    val_star = []
     if k == 1:
         tree_path, val_ll = learn_mtscite(X, output_dir=output_dir, **kwargs)
         val_ll = score_tree(X, tree_path, suffix=f'_{rate}', **kwargs)
@@ -102,25 +121,45 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
         train_data = X.T[train_index].T
         #tree_path, train_ll = learn_mtscite(train_data, suffix=f"_{rate}_{i}", **kwargs)
         tree_path, train_ll = learn_mtscite(train_data, suffix=f"_{rate}_{i}", **kwargs)
+        print(f"tree path {tree_path}")
         # Evaluate on complete test data
         test_data = X.T[test_index].T
         val_ll = score_tree(test_data, tree_path, X.shape[0], suffix=f"_{rate}", **kwargs)
-        # Store ll on complete test data divided by its size
-        val_scores.append(val_ll/test_data.size)
+        val_ll_star_tree = score_tree(test_data, star_tree_file_path, X.shape[0], suffix=f"_{rate}", **kwargs)
 
-    return val_scores
+        diff_log_lik = val_ll - val_ll_star_tree
+        print(f"test tree score {val_ll}")
+        print(f"star tree score {val_ll_star_tree}")
+        #print(f"reported score {diff_log_lik}")
+        # Store ll on complete test data normalised by score on star tree
+        val_scores.append(val_ll)
+        val_star.append(val_ll_star_tree)
+        
+
+    return val_scores, val_star
 
 
 def score_error_rates(data_path, **kwargs):
     scores = dict()
+    stars = dict()
+    
     mats = [join(data_path, f) for f in listdir(data_path) if isfile(join(data_path, f))]
+    #print(mats)
     for mat in mats:
-        if 'csv' in mat:
+        # only use basename
+        mat_filename = os.path.basename(mat)
+        # Check if the filename ends with '.csv' and starts with a numeric pattern
+        if mat_filename.endswith('.csv') and mat_filename.startswith('0.'): #re.match(r'^\d+(\.\d*)?\.csv$', mat):
+            print(mat)
             error_rate = mat.split("/")[-1].split(".csv")[0] # read error rate from input file
-            out = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate
-            if out is not None:
-                scores[error_rate] = out
-    return scores
+            out1, out2 = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate
+            if out1 is not None:
+                scores[error_rate] = out1
+
+            if out2 is not None:
+                stars[error_rate] = out2
+                
+    return scores, stars
 
 
 
@@ -145,9 +184,19 @@ if __name__ == "__main__":
     output_dir = args.o
 
     df_list = []
+    df2_list = []
     for rep in range(r):
-        val_scores = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
+        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
+        print(val_scores)
         df = pd.DataFrame(val_scores)
         df_list.append(df)
+
+        df2 = pd.DataFrame(stars)
+        df2_list.append(df2)
+
     full_df = pd.concat(df_list)
+    print(full_df)
     full_df.to_csv(os.path.join(output_dir, 'val_scores.txt'))
+
+    full_df_stars = pd.concat(df2_list)
+    full_df_stars.to_csv(os.path.join(output_dir, 'val_scores_star_trees.txt'))
