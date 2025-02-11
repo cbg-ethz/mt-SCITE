@@ -116,7 +116,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     num_mutations_filtered = filtered_X.shape[0]
     
     if num_mutations_filtered < 10: # don't learn
-        return None, None, None
+        return np.nan, np.nan, np.nan
 
     # generate star tree to normalise against
     star_tree = generate_star_tree(num_mutations_filtered)
@@ -130,7 +130,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     
     if k == 1:
         tree_path, val_ll, trees = learn_mtscite(X, output_dir=output_dir, **kwargs)
-        val_ll = score_tree(X, tree_path, suffix=f'_{rate}', **kwargs)
+        val_ll = score_tree(X, tree_path, suffix=f'_{rate}_{seed}_{k}', **kwargs)
         val_ll_star_tree = score_tree(X, star_tree_file_path, suffix=f'_{rate}', **kwargs)
         
         val_scores.append(val_ll)
@@ -154,18 +154,19 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
         test_data = full_X.T[test_index].T
 
         #print("Learned tree")
-        val_ll = score_tree(test_data, tree_path, filtered_X.shape[0], suffix=f"_{rate}", **kwargs)
+        # suffix before was f"_{rate}"
+        val_ll = score_tree(test_data, tree_path, filtered_X.shape[0], suffix=suffix, **kwargs)
         #print("Star tree")
-        val_ll_star_tree = score_tree(test_data, star_tree_file_path, filtered_X.shape[0], suffix=f"_{rate}", **kwargs)
+        val_ll_star_tree = score_tree(test_data, star_tree_file_path, filtered_X.shape[0], suffix=suffix, **kwargs)
 
-        diff_log_lik = val_ll - val_ll_star_tree
+        log_lik_normalised = val_ll / val_ll_star_tree
         print(f"test tree score: {val_ll}")
         print(f"star tree score: {val_ll_star_tree}")
         print(f"number of optimal tree: {trees}")
         
         #print(f"reported score {diff_log_lik}")
         # Store ll on complete test data normalised by score on star tree
-        val_scores.append(val_ll)
+        val_scores.append(log_lik_normalised)
         val_star.append(val_ll_star_tree)
         n_trees.append(trees)
         
@@ -242,7 +243,7 @@ if __name__ == "__main__":
 
     full_df = pd.concat(df_list)
     #print(full_df)
-    full_df.to_csv(os.path.join(output_dir, 'val_scores.txt'))
+    full_df.to_csv(os.path.join(output_dir, 'val_scores_normalised.txt'))
 
     full_df_stars = pd.concat(df2_list)
     full_df_stars.to_csv(os.path.join(output_dir, 'val_scores_star_trees.txt'))
