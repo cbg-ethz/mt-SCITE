@@ -26,7 +26,7 @@ def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", 
     n, m = mat.shape
     print("Shape of the mutation matrix used for error rate testing")
     print(n, m)
-    cmd = f"{bin_path} -i {matrix_file} -n {n} -n2 {n2} -m {m} -t {tree_path} -r 1 -l 0 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o {output_prefix} -seed {seed}"
+    cmd = f"{bin_path} -i {matrix_file} -n {n} -n2 {n2} -m {m} -t {tree_path} -r 1 -l 0 -fd 0.0001 -ad 0.0001 -cc 0.0 -s  -o {output_prefix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
     #print(cmd)
 
@@ -38,13 +38,22 @@ def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", 
             score = np.mean([float(x) for x in line.split('\t')[1:]])
             break
 
-    if score == -1:
-        print(cmd)
-        raise RuntimeError(
-        "Error: mtSCITE did not run successfully or its output is missing the line 'True tree score'. "
-        "Please check the command output and ensure the binary is functioning as expected. "
-        f"Command output:\n{result.stdout}\nCommand error:\n{result.stderr}"
-    )
+    while score == -1:
+        result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
+        out = result.stdout
+        out = out.split('\n')
+        for line in out:
+            if "True tree score:" in line:
+                score = np.mean([float(x) for x in line.split('\t')[1:]])
+                break
+
+    # if score == -1:
+    #     print(cmd)
+    #     raise RuntimeError(
+    #     "Error: mtSCITE did not run successfully or its output is missing the line 'True tree score'. "
+    #     "Please check the command output and ensure the binary is functioning as expected. "
+    #     f"Command output:\n{result.stdout}\nCommand error:\n{result.stderr}"
+    # )
     
     # Remove intermediate files from this step
     #os.remove(matrix_file)
@@ -62,7 +71,7 @@ def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000
 
     output_prefix = os.path.join(output_dir, f'learned{suffix}') 
     
-    cmd = f"{bin_path} -i {matrix_file} -n {n} -m {m} -r 1 -l {l} -max_treelist_size 100 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -o {output_prefix} -seed {seed}"
+    cmd = f"{bin_path} -i {matrix_file} -n {n} -m {m} -r 1 -l {l} -max_treelist_size 100 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o {output_prefix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
     #print(cmd)
     #print(result)
