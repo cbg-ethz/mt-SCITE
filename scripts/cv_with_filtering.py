@@ -73,21 +73,18 @@ def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000
     
     cmd = f"{bin_path} -i {matrix_file} -n {n} -m {m} -r 1 -l {l} -max_treelist_size 100 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o {output_prefix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
-    #print(cmd)
-    #print(result)
+    print(cmd)
+    print(result)
 
     os.remove(matrix_file)
     out = result.stdout
     out = out.split('\n')
     score = -1
-    n_trees = 0
+
     for line in out:
         if "best log score for tree:" in line:
             score = line.split('\t')[1]
         
-        if 'opt tree' in line:
-            n_trees = line.split(' opt')[0].lstrip()
-            break
 
     if score == -1:
         raise RuntimeError(
@@ -100,7 +97,7 @@ def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000
     #print(f'{output_prefix}_map0.newick')
     #os.remove(f'{output_prefix}.samples')
     #os.remove(f'{output_prefix}_map0.newick')
-    return f"{output_prefix}_map0.gv", float(score), int(n_trees)
+    return f"{output_prefix}_map0.gv", float(score)
 
 def generate_star_tree(num_mutations):
 
@@ -125,7 +122,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     num_mutations_filtered = filtered_X.shape[0]
     
     if num_mutations_filtered < 10: # don't learn
-        return np.nan, np.nan, np.nan
+        return np.nan, np.nan
 
     # generate star tree to normalise against
     star_tree = generate_star_tree(num_mutations_filtered)
@@ -135,17 +132,15 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     
     val_scores = []
     val_star = []
-    n_trees = []
     
     if k == 1:
-        tree_path, val_ll, trees = learn_mtscite(X, output_dir=output_dir, **kwargs)
+        tree_path, val_ll = learn_mtscite(X, output_dir=output_dir, **kwargs)
         val_ll = score_tree(X, tree_path, suffix=f'_{rate}_{seed}_{k}', **kwargs)
         val_ll_star_tree = score_tree(X, star_tree_file_path, suffix=f'_{rate}', **kwargs)
         
         val_scores.append(val_ll)
         val_star.append(val_ll_star_tree)
-        n_trees.append(trees)
-        return val_scores, val_star, n_trees
+        return val_scores, val_star
 
     kf = KFold(n_splits=k, random_state=seed, shuffle=True)
     for i, (train_index, test_index) in enumerate(kf.split(full_X.T)):
@@ -156,7 +151,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
 
         # suffix is the error rate, the repetition number and the fold number
         suffix = f"_{rate}_{seed}_{i}"
-        tree_path, train_ll, trees = learn_mtscite(train_data, suffix=suffix, **kwargs)
+        tree_path, train_ll = learn_mtscite(train_data, suffix=suffix, **kwargs)
         print(f"tree path {tree_path}")
 
         # Evaluate on complete test data
@@ -171,22 +166,19 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
         log_lik_normalised = val_ll / val_ll_star_tree
         print(f"test tree score: {val_ll}")
         print(f"star tree score: {val_ll_star_tree}")
-        print(f"number of optimal tree: {trees}")
         
         #print(f"reported score {diff_log_lik}")
         # Store ll on complete test data normalised by score on star tree
         val_scores.append(log_lik_normalised)
         val_star.append(val_ll_star_tree)
-        n_trees.append(trees)
         
 
-    return val_scores, val_star, n_trees
+    return val_scores, val_star
 
 
 def score_error_rates(data_path, **kwargs):
     scores = dict()
     stars = dict()
-    n_trees = dict()
     
     mats = [join(data_path, f) for f in listdir(data_path) if isfile(join(data_path, f))]
     #print(mats)
@@ -199,18 +191,15 @@ def score_error_rates(data_path, **kwargs):
             error_rate = mat.split("/")[-1].split(".csv")[0] # read error rate from input file
             print("\n")
             print(f'Learning the tree for error rate {error_rate}')
-            out1, out2, trees = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate 
+            out1, out2 = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate 
             if out1 is not None:
                 scores[error_rate] = out1
 
             if out2 is not None:
                 stars[error_rate] = out2
 
-            if trees is not None:
-                n_trees[error_rate] = trees
                 
-                
-    return scores, stars, n_trees
+    return scores, stars
 
 
 
@@ -236,10 +225,9 @@ if __name__ == "__main__":
 
     df_list = []
     df2_list = []
-    df_trees_list = []
     
     for rep in range(r):
-        val_scores, stars, trees = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
+        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
         print(val_scores)
         df = pd.DataFrame(val_scores)
         df_list.append(df)
@@ -247,8 +235,6 @@ if __name__ == "__main__":
         df2 = pd.DataFrame(stars)
         df2_list.append(df2)
 
-        df_trees = pd.DataFrame(trees)
-        df_trees_list.append(df_trees)
 
     full_df = pd.concat(df_list)
     #print(full_df)
@@ -256,6 +242,3 @@ if __name__ == "__main__":
 
     full_df_stars = pd.concat(df2_list)
     full_df_stars.to_csv(os.path.join(output_dir, 'val_scores_star_trees.txt'))
-
-    full_df_trees = pd.concat(df_trees_list)
-    full_df_trees.to_csv(os.path.join(output_dir, 'number_of_trees.txt'))
