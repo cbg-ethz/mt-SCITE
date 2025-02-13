@@ -39,8 +39,6 @@ def __():
     import pandas as pd
     import seaborn as sns
     from matplotlib.ticker import FormatStrFormatter
-
-
     return (
         Counter,
         EngFormatter,
@@ -92,7 +90,7 @@ def __(plt, sns):
 @app.cell
 def __():
     # specify directories
-    mtscite_output_dir = '../../../results/data_analysis/p9855/error_rate_learning/'
+    mtscite_output_dir = '../../../results/data_analysis/p9855/error_rate_learning_k3_r3/'
     return mtscite_output_dir,
 
 
@@ -112,7 +110,6 @@ def __(mtscite_output_dir, os, pd):
     folds = [0, 1, 2]
 
     tree_likelihoods = pd.read_csv(mtscite_likelihoods, index_col=0)
-
     return folds, mtscite_likelihoods, repetitions, tree_likelihoods
 
 
@@ -147,9 +144,6 @@ def __(tree_likelihoods):
     repetition_pattern = (tree_likelihoods_long.index // 3) % 3
 
     tree_likelihoods_long["rep_idx"] = repetition_pattern
-
-
-
     return num_rows, repetition_pattern, tree_likelihoods_long
 
 
@@ -180,7 +174,7 @@ def __(
 
 @app.cell
 def __(mo):
-    mo.md(r"""## Plot """)
+    mo.md(r"""## Plot""")
     return
 
 
@@ -188,7 +182,6 @@ def __(mo):
 def __(df):
     # Compute the mean tree likelihood per error rate across repetitions and folds
     mean_likelihood_df = df.groupby("error_rate", as_index=False)["tree_likelihood"].mean()
-
     return mean_likelihood_df,
 
 
@@ -242,7 +235,6 @@ def __(
     sns,
     tick_positions,
 ):
-
     with plot_style(figsize=(5, 3), ticklabelsize=8, labelsize=10):
         sns.boxplot(data=df, x="error_rate", y="tree_likelihood", color="lightgray", showfliers=False) #marker='o'
 
@@ -256,8 +248,8 @@ def __(
         plt.ylabel('Normalized tree likelihood')
         plt.xlabel('Error rate')
 
-        #plt.show()
-        plt.savefig(f'../figures/fig3/likelihood.svg', dpi=300, bbox_inches='tight', transparent=True)
+        plt.show()
+        #plt.savefig(f'../figures/fig3/likelihood.svg', dpi=300, bbox_inches='tight', transparent=True)
     return
 
 
