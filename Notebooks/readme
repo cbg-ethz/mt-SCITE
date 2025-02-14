@@ -20,8 +20,12 @@ Run compute_mutations_probabilities.ipynb to generate mt-SCITE input
 
 Run mt-SCITE
 
-Run performance notebook
+Run performance notebook to generate purity and clone coverage plots
 
-Run pretty trees notebook
+Run k-fold cross validation using cv.py in the ../scripts
+
+Plot the tree likelihood across error rates and choose error rate using plot_fig2c.py and plot_fig_4a.py
+
+Run pretty trees notebook 
 
 
