@@ -199,7 +199,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     num_mutations = X.shape[0]
 
     if num_mutations < 10: # don't learn
-        return None
+        return np.nan, np.nan
 
     # Generate a star tree to compare as a baseline
     star_tree = generate_star_tree(num_mutations)
@@ -209,9 +209,17 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     if k == 1:
         # Train on the entire dataset
         tree_path, val_ll = learn_mtscite(X, output_dir=output_dir, **kwargs)
-        val_ll = score_tree(X, tree_path, suffix=f'_{rate}', **kwargs)
-        val_star_ll = score_tree(X, star_tree_file_path, suffix=f'_{rate}', **kwargs)
-        return [val_ll], [val_star_ll]
+
+        # suffix is the error rate and the repetition number
+        suffix = f"_{rate}_{seed}"
+        
+        val_ll = score_tree(X, tree_path, suffix=suffix, **kwargs)
+        val_ll_star_tree = score_tree(X, star_tree_file_path, suffix=suffix, **kwargs)
+
+        if normalised:
+            val_ll = val_ll / val_ll_star_tree
+        
+        return [val_ll], [val_ll_star_tree]
 
     # Otherwise, perform k-fold cross-validation
     val_scores = []
@@ -221,15 +229,22 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
     for i, (train_index, test_index) in enumerate(kf.split(X.T)):
         # Learn on training data
         train_data = X.T[train_index].T
-        tree_path, train_ll = learn_mtscite(train_data, suffix=f"_{rate}_{i}", **kwargs)
+
+        # suffix is the error rate, the repetition number and the fold number
+        suffix = f"_{rate}_{seed}_{i}"
+        
+        tree_path, train_ll = learn_mtscite(train_data, suffix=suffix, **kwargs)
         #print(f"tree path {tree_path}")
 
         # Evaluate on test data
         test_data = X.T[test_index].T
-        val_ll = score_tree(test_data, tree_path, X.shape[0], suffix=f"_{rate}", **kwargs)
-        val_ll_star_tree = score_tree(test_data, star_tree_file_path, X.shape[0], suffix=f"_{rate}", **kwargs)
+        val_ll = score_tree(test_data, tree_path, X.shape[0], suffix=suffix, **kwargs)
+        val_ll_star_tree = score_tree(test_data, star_tree_file_path, X.shape[0], suffix=suffix, **kwargs)
 
         print(f"Fold {i} - Learned tree score: {val_ll}, Star tree score: {val_ll_star_tree}")
+
+        if normalised:
+            val_ll = val_ll / val_ll_star_tree
 
         val_scores.append(val_ll)
         val_star.append(val_ll_star_tree)
@@ -276,7 +291,7 @@ def score_error_rates(data_path, **kwargs):
             # The portion before .csv is assumed to be the error rate
             error_rate = mat.split("/")[-1].split(".csv")[0] # read error rate from input file
             print(f"Running k-fold cross-validation for error rate: {error_rate}")
-            out1, out2 = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate
+            out1, out2 = kfold_mtscite(mat, rate=error_rate, normalised=normalised, **kwargs)
             if out1 is not None:
                 scores[error_rate] = out1
 
@@ -297,6 +312,7 @@ parser.add_argument('-l', default=200000, type=int, help="Number of MCMC iterati
 parser.add_argument('-k', default=3, type=int, help="Number of CV folds")
 parser.add_argument('-r', default=10, type=int, help="Number of repetitions of the CV scheme for each error rate")
 parser.add_argument('-o', default=".", help="Output directory")
+parser.add_argument('-n', default="True", type=bool, help="Whether (T) or not (F) the tree scores should be normalised by the star tree score")
 
 args = parser.parse_args()
 
@@ -307,6 +323,7 @@ if __name__ == "__main__":
     k = args.k
     r = args.r
     output_dir = args.o
+    report_normalised = args.n
 
     df_list = []
     df2_list = []
@@ -314,7 +331,7 @@ if __name__ == "__main__":
     # Collect results across multiple repetitions
     for rep in range(r):
         print(f"Running repetition {rep+1} out of {r} ") 
-        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
+        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir, normalised=report_normalised)
         print(val_scores)
         df = pd.DataFrame(val_scores)
         df_list.append(df)
