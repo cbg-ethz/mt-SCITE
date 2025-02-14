@@ -291,7 +291,7 @@ def score_error_rates(data_path, **kwargs):
             # The portion before .csv is assumed to be the error rate
             error_rate = mat.split("/")[-1].split(".csv")[0] # read error rate from input file
             print(f"Running k-fold cross-validation for error rate: {error_rate}")
-            out1, out2 = kfold_mtscite(mat, rate=error_rate, normalised=normalised, **kwargs)
+            out1, out2 = kfold_mtscite(mat, rate=error_rate, **kwargs)
             if out1 is not None:
                 scores[error_rate] = out1
 
@@ -323,7 +323,7 @@ if __name__ == "__main__":
     k = args.k
     r = args.r
     output_dir = args.o
-    report_normalised = args.n
+    normalised = args.n
 
     df_list = []
     df2_list = []
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     # Collect results across multiple repetitions
     for rep in range(r):
         print(f"Running repetition {rep+1} out of {r} ") 
-        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir, normalised=report_normalised)
+        val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir, normalised=normalised)
         print(val_scores)
         df = pd.DataFrame(val_scores)
         df_list.append(df)
