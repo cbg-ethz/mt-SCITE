@@ -1,3 +1,4 @@
+# import libs
 import numpy as np
 from sklearn.model_selection import KFold
 import os
@@ -14,21 +15,59 @@ from networkx.drawing.nx_pydot import write_dot
 
 def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", **kwargs):
     """
-    n2 is the number of mutations in the true tree. The remaining mutations will be set as non-mutated in the LL computation
+    Compute the log-likelihood score of the training tree on the heldout test data.
+
+    This function:
+    1. Saves the test set mutation matrix to a temporary text file.
+    2. Calls the mtSCITE binary to compute log-likelihood scores for the training tree
+       and the mutation matrix.
+    3. Parses mtSCITE’s output, extracts the line containing 'True tree score:', 
+       and returns that value as a float.
+    4. Removes temporary files before returning.
+
+    Parameters
+    ----------
+    mat : np.ndarray
+        Mutation matrix (test set) to be scored. Rows represent mutations, columns samples.
+    tree_path : str
+        Path to the tree (in .gv or .newick) whose score we want to compute.
+    n2 : int
+        Number of mutations in the training tree. The remaining will be treated as non-mutated.
+    output_dir : str
+        Directory where temporary files and output files are written.
+    bin_path : str, optional
+        Path to the mtSCITE binary.
+    seed : int, optional
+        Random seed for reproducibility, by default 1.
+    suffix : str, optional
+        Suffix to append to output filenames, by default 'temp'.
+
+    Returns
+    -------
+    float
+        Computed log-likelihood score for the provided tree.
+
+    Raises
+    ------
+    RuntimeError
+        If the mtSCITE output does not contain 'True tree score' or if the call fails.
     """
 
+    # Save the mutation matrix to file such that it can be used by mt-SCITE
     matrix_file = os.path.join(output_dir, f'mat{suffix}.txt')
     np.savetxt(matrix_file, mat, delimiter=' ')
 
-    output_prefix = os.path.join(output_dir, f'output{suffix}') 
-    #np.savetxt(f'mat{suffix}.txt', mat, delimiter=' ')
-    
+    output_prefix = os.path.join(output_dir, f'output{suffix}')
+
     n, m = mat.shape
     print("Shape of the mutation matrix used for error rate testing")
     print(n, m)
+
+    # Build mt-SCITE command
     cmd = f"{bin_path} -i {matrix_file} -n {n} -n2 {n2} -m {m} -t {tree_path} -r 1 -l 0 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -a -o {output_prefix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
 
+    # Parse mtSCITE's stdout for the tree score
     out = result.stdout
     out = out.split('\n')
     score = -1
@@ -43,26 +82,70 @@ def score_tree(mat, tree_path, n2, bin_path="./mtscite", seed=1, suffix="temp", 
         "Please check the command output and ensure the binary is functioning as expected. "
         f"Command output:\n{result.stdout}\nCommand error:\n{result.stderr}"
     )
-    
-    # Remove intermediate files from this step
-    os.remove(matrix_file)
-    os.remove(f'{output_prefix}.samples')
+
+    # Remove intermediate files
+    if os.path.exists(matrix_file):
+        os.remove(matrix_file)
+    samples_file = f'{output_prefix}.samples'
+    if os.path.exists(samples_file):
+        os.remove(samples_file)
 
     return float(score)
 
 def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000, seed=1, **kwargs):
+
+    """
+    Run mtSCITE to learn an optimal tree from the mutation matrix (training set).
+
+    This function:
+    1. Saves the input mutation matrix to a temporary file.
+    2. Calls the mtSCITE binary to learn a tree (runs MCMC).
+    3. Parses mtSCITE's output for the best log score.
+    4. Removes unnecessary mtSCITE output files and returns the path to the optimal tree and the score.
+
+    Parameters
+    ----------
+    mat : np.ndarray
+        Mutation matrix. Rows typically represent mutations, columns samples.
+    output_dir : str
+        Directory where temporary files and results will be written.
+    suffix : str, optional
+        Suffix appended to output filenames, by default 'temp'.
+    bin_path : str, optional
+        Path to the mtSCITE binary, by default './mtscite'.
+    l : int, optional
+        Number of MCMC iterations, by default 200000.
+    seed : int, optional
+        Random seed, by default 1.
+
+    Returns
+    -------
+    Tuple[str, float]
+        Path to the learned tree in .gv format, and the best log score from mtSCITE.
+
+    Raises
+    ------
+    RuntimeError
+        If the mtSCITE output is missing the line needed for identifying the best log score.
+    """
+
     n, m = mat.shape
     print("Shape of the mutation matrix used for error rate learning")
     print(n,m)
-    # Write mat
+
+    # Write the matrix to a temporary file
     matrix_file = os.path.join(output_dir, f'mat{suffix}.txt')
     np.savetxt(matrix_file, mat, delimiter=' ')
 
-    output_prefix = os.path.join(output_dir, f'learned{suffix}') 
-    
+    output_prefix = os.path.join(output_dir, f'learned{suffix}')
+
+    # Build and run mtSCITE command
     cmd = f"{bin_path} -i {matrix_file} -n {n} -m {m} -r 1 -l {l} -max_treelist_size 1 -fd 0.0001 -ad 0.0001 -cc 0.0 -s -o {output_prefix} -seed {seed}"
     result = run(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
+    
     os.remove(matrix_file)
+
+    # Parse mtSCITE's stdout for the best log score
     out = result.stdout
     out = out.split('\n')
     score = -1
@@ -81,10 +164,20 @@ def learn_mtscite(mat, output_dir, suffix="temp", bin_path="./mtscite", l=200000
     # remove unnecessary files and only return first map tree
     #print(f'{output_prefix}_map0.newick')
     os.remove(f'{output_prefix}.samples')
-    os.remove(f'{output_prefix}_map0.newick')
+
+
     return f"{output_prefix}_map0.gv", float(score)
 
 def generate_star_tree(num_mutations):
+    """
+    Generate a 'star' shaped DiGraph with a single center node and edges to all other nodes.
+
+    Parameters
+    ----------
+    num_mutations : int
+        Number of mutations; the star tree will have 1 center node and `num_mutations` leaves.
+    """
+
 
     star_tree = nx.DiGraph()
     center_node = num_mutations + 1
@@ -93,79 +186,111 @@ def generate_star_tree(num_mutations):
     return star_tree
 
 def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
-    print(f"error comes: {data_path}")
+    """
+    Perform k-fold cross-validation with mtSCITE on a mutation matrix.
+
+    For k=1, it trains on the whole dataset and returns a single score.
+    For k>1, it splits columns (cells) into train/test sets, learns a tree on the train portion, 
+    and computes likelihood scores on the test portion.  Also computes each test score 
+    with a 'star tree' baseline.
+    """
     X = np.loadtxt(data_path, delimiter=' ')
 
     num_mutations = X.shape[0]
-    
+
     if num_mutations < 10: # don't learn
         return None
 
-    # generate star tree to normalise against
+    # Generate a star tree to compare as a baseline
     star_tree = generate_star_tree(num_mutations)
     star_tree_file_path = os.path.join(output_dir, "star_tree.gv")
     write_dot(star_tree, star_tree_file_path)
-    
-    val_scores = []
-    val_star = []
+
     if k == 1:
+        # Train on the entire dataset
         tree_path, val_ll = learn_mtscite(X, output_dir=output_dir, **kwargs)
         val_ll = score_tree(X, tree_path, suffix=f'_{rate}', **kwargs)
-        val_ll = val_ll / X.size
-        val_scores.append(val_ll)
-        return val_scores
+        val_star_ll = score_tree(X, star_tree_file_path, suffix=f'_{rate}', **kwargs)
+        return [val_ll], [val_star_ll]
+
+    # Otherwise, perform k-fold cross-validation
+    val_scores = []
+    val_star = []
 
     kf = KFold(n_splits=k, random_state=seed, shuffle=True)
     for i, (train_index, test_index) in enumerate(kf.split(X.T)):
-        # Learn on filtered training data
+        # Learn on training data
         train_data = X.T[train_index].T
-        #tree_path, train_ll = learn_mtscite(train_data, suffix=f"_{rate}_{i}", **kwargs)
         tree_path, train_ll = learn_mtscite(train_data, suffix=f"_{rate}_{i}", **kwargs)
-        print(f"tree path {tree_path}")
-        # Evaluate on complete test data
+        #print(f"tree path {tree_path}")
+
+        # Evaluate on test data
         test_data = X.T[test_index].T
         val_ll = score_tree(test_data, tree_path, X.shape[0], suffix=f"_{rate}", **kwargs)
         val_ll_star_tree = score_tree(test_data, star_tree_file_path, X.shape[0], suffix=f"_{rate}", **kwargs)
 
-        diff_log_lik = val_ll - val_ll_star_tree
-        print(f"test tree score {val_ll}")
-        print(f"star tree score {val_ll_star_tree}")
-        #print(f"reported score {diff_log_lik}")
-        # Store ll on complete test data normalised by score on star tree
+        print(f"Fold {i} - Learned tree score: {val_ll}, Star tree score: {val_ll_star_tree}")
+
         val_scores.append(val_ll)
         val_star.append(val_ll_star_tree)
-        
 
     return val_scores, val_star
 
 
 def score_error_rates(data_path, **kwargs):
-    scores = dict()
-    stars = dict()
-    
-    mats = [join(data_path, f) for f in listdir(data_path) if isfile(join(data_path, f))]
-    #print(mats)
-    for mat in mats:
+     """
+    Traverse files in the specified data directory, identify those that start with '0.'
+    and end with '.csv' (interpreted as error rates), then run kfold_mtscite for each file.
+
+    Parameters
+    ----------
+    data_path : str
+        Directory containing multiple .csv mutation probability matrix
+        files, each  with a  prefix denoting the error rate.
+    output_dir : str
+        Directory where results and temporary files will be written.
+    **kwargs :
+        Additional arguments passed to kfold_mtscite.
+
+    Returns
+    -------
+    Tuple[Dict[str, List[float]], Dict[str, List[float]]]
+        A 2-tuple of dictionaries:
+            - scores[error_rate] = list of log-likelihoods of the
+              training tree on the test data
+            - stars[error_rate]  = list of log-likelihoods of the
+               star-tree on the test data
+    """
+     
+     scores = dict()
+     stars = dict()
+
+     mats = [join(data_path, f) for f in listdir(data_path) if isfile(join(data_path, f))]
+     #print(mats)
+     for mat in mats:
         # only use basename
         mat_filename = os.path.basename(mat)
         # Check if the filename ends with '.csv' and starts with a numeric pattern
-        if mat_filename.endswith('.csv') and mat_filename.startswith('0.'): #re.match(r'^\d+(\.\d*)?\.csv$', mat):
-            print(mat)
+        if mat_filename.endswith('.csv') and mat_filename.startswith('0.'):
+            #print(mat)
+            # The portion before .csv is assumed to be the error rate
             error_rate = mat.split("/")[-1].split(".csv")[0] # read error rate from input file
+            print(f"Running k-fold cross-validation for error rate: {error_rate}")
             out1, out2 = kfold_mtscite(mat, rate=error_rate, **kwargs) # run CV for this error rate
             if out1 is not None:
                 scores[error_rate] = out1
 
             if out2 is not None:
                 stars[error_rate] = out2
-                
-    return scores, stars
 
+     return scores, stars
 
 
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+        description="Run mtSCITE with k-fold CV across multiple error rates."
+    )
 parser.add_argument('--directory', default='/cluster/work/bewi/members/pedrof/mtscite/YFV2001_matrix_output_final/YFV2001_matrix_output')
 parser.add_argument('--mtscite_bin_path', default='/cluster/work/bewi/members/pedrof/mtscite/mt-SCITE-main/mtscite')
 parser.add_argument('-l', default=200000, type=int, help="Number of MCMC iterations")
@@ -185,7 +310,10 @@ if __name__ == "__main__":
 
     df_list = []
     df2_list = []
+
+    # Collect results across multiple repetitions
     for rep in range(r):
+        print(f"Running repetition {rep+1} out of {r} ") 
         val_scores, stars = score_error_rates(data_directory, bin_path=mtscite_bin, l=l, k=k, seed=rep, output_dir=output_dir)
         print(val_scores)
         df = pd.DataFrame(val_scores)
