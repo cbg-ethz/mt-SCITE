@@ -74,9 +74,9 @@ def __(plt, sns):
            'axes.titlesize': titlesize,
            'xtick.labelsize': ticklabelsize,
            'ytick.labelsize': ticklabelsize,
-           'axes.spines.top': False,
-           'axes.spines.right': False,
-           'axes.spines.left': False,
+           'axes.spines.top': True,
+           'axes.spines.right': True,
+           'axes.spines.left': True,
            'axes.grid': False,
            'axes.grid.axis': 'y',
        }
@@ -103,7 +103,7 @@ def __(mo):
 @app.cell
 def __(mtscite_output_dir, os, pd):
     #scite_input_path = f'../../../mt-SCITE/mt-SCITE_output/P9855/stdout/'
-    mtscite_likelihoods = os.path.join(mtscite_output_dir, 'val_scores_normalised.txt')
+    mtscite_likelihoods = os.path.join(mtscite_output_dir, 'val_scores.txt')
 
     # we used 3 repetitions for every 3-fold cross validation
     repetitions =  [0, 1, 2]
@@ -168,7 +168,7 @@ def __(
 
     # drop likelihoods and error rates, where there the likelihood was NA. This is the output from mt-scite, if the number of mutations is <10, where an error rate is not learned
 
-    df = df.dropna(subset=['tree_likelihood'])
+    #df = df.dropna(subset=['tree_likelihood'])
     return combinations, df
 
 
@@ -220,7 +220,7 @@ def __():
 @app.cell
 def __(error_rate_order):
     # Define the subset of error rates to display
-    selected_error_rates = [0.0001, 0.0008, 0.0015, 0.0031, 0.0101, 0.0181, 0.0231]
+    selected_error_rates = [0.0001, 0.0008, 0.0015, 0.0031, 0.0101, 0.0171, 0.0241, 0.0321, 0.0351]
     tick_positions = [error_rate_order.index(er) for er in selected_error_rates if er in error_rate_order]
     return selected_error_rates, tick_positions
 
@@ -235,7 +235,8 @@ def __(
     sns,
     tick_positions,
 ):
-    with plot_style(figsize=(5, 3), ticklabelsize=8, labelsize=10):
+    # Show the error rates that are not NaN
+    with plot_style(figsize=(4.4, 2.5), ticklabelsize=11, labelsize=12):
         sns.boxplot(data=df, x="error_rate", y="tree_likelihood", color="lightgray", showfliers=False) #marker='o'
 
         # add estimated error rate
@@ -247,6 +248,8 @@ def __(
                    rotation=90)
         plt.ylabel('Normalized tree likelihood')
         plt.xlabel('Error rate')
+        #ax = plt.gca()
+        #ax.xaxis.set_tick_params(pad=-6)
 
         plt.show()
         #plt.savefig(f'../figures/fig3/likelihood.svg', dpi=300, bbox_inches='tight', transparent=True)
@@ -254,8 +257,107 @@ def __(
 
 
 @app.cell
+def __(df, np):
+    # Rationale here is to plot the likelihoods and report the NAN values in the plot
+    valid_df = df[df['tree_likelihood'].notnull()]
+
+    invalid_df = df.copy()
+    invalid_df['tree_likelihood'] = np.where(
+        invalid_df['tree_likelihood'].isnull(),  # True if originally NaN
+        -0.05,                                     # constant y-value for invalid points
+        np.nan                                   # otherwise set to NaN so they're not plotted here
+    )
+    return invalid_df, valid_df
+
+
+@app.cell
 def __():
     return
+
+
+@app.cell
+def __():
+    return
+
+
+@app.cell
+def __(
+    best_error_rate_idx,
+    df,
+    error_rate_order,
+    invalid_df,
+    plot_style,
+    plt,
+    selected_error_rates,
+    tick_positions,
+):
+    # Plot likelihoods and error rates
+    with plot_style(figsize=(4.4, 2.5), ticklabelsize=12, labelsize=12):
+
+        
+        # 1) Create figure & axes
+        fig, ax = plt.subplots(figsize=(4.4, 2.5))
+        
+        # 2) Prepare data for boxplot
+        box_data = []
+        for c in error_rate_order:
+            subset = df.loc[df["error_rate"] == c, "tree_likelihood"]
+            box_data.append(subset.dropna().values)  # dropna -> valid data only
+        
+        # 3) Plot the boxplot with patch_artist=True so we can color the boxes
+        bp = ax.boxplot(
+            box_data,
+            positions=range(len(error_rate_order)),
+            patch_artist=True,  # needed for facecolor/edgecolor changes
+            showfliers=False,
+            widths=0.6
+        )
+        
+        # 4) Style the boxplot lines/faces
+        for element in ['whiskers', 'caps', 'medians']:
+            plt.setp(bp[element], color='black')  # or 'gray'
+        
+        for box in bp['boxes']:
+            box.set_facecolor('lightgray')   # fill color for the boxes
+            box.set_edgecolor('black')       # outline color
+        
+        # 5) Overlay invalid points at the same integer positions
+        for i, e in enumerate(error_rate_order):
+            sub = invalid_df[invalid_df["error_rate"] == e]
+            yvals = sub["tree_likelihood"]
+            ax.scatter(
+                [i] * len(yvals),  # all plotted at x = i
+                yvals,
+                marker='o',
+                s=10,
+                linewidths=0.5,
+                facecolors='none',  # open circle
+                edgecolors='black',
+                label='NaN (No valid tree)' if i == 0 else ''  # label once
+            )
+        
+        # 6) Customize x-axis
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels([str(er) for er in selected_error_rates], rotation=90)
+        ax.set_xlabel("Error rate")
+        ax.set_ylabel("Normalized tree likelihood")
+        
+        # 7) Add vertical line for best likelihood
+        ax.axvline(
+            x=best_error_rate_idx,  # must be an integer index into error_rates_order
+            color='red',
+            linestyle='dashed',
+            linewidth=1.5,
+            label="Best Likelihood"
+        )
+        #ax = plt.gca()
+        ax.xaxis.set_tick_params(pad=-4)
+        
+        #ax.legend()
+        #plt.tight_layout()
+        #plt.show()
+        plt.savefig(f'../figures/fig3/likelihood_nan.svg', dpi=300, bbox_inches='tight', transparent=True)
+    return ax, box, box_data, bp, c, e, element, fig, i, sub, subset, yvals
 
 
 @app.cell
