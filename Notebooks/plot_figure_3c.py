@@ -90,7 +90,7 @@ def __(plt, sns):
 @app.cell
 def __():
     # specify directories
-    mtscite_output_dir = '../../../results/data_analysis/p9855/error_rate_learning_k3_r3/'
+    mtscite_output_dir = '../../../results/data_analysis/p9855/error_rate_learning_k3_r3_mg7/'
     return mtscite_output_dir,
 
 
@@ -206,7 +206,6 @@ def __(mean_likelihood_df):
 def __(best_error_rate, df):
     # The box plot uses categorical values of the x axis while I want to use the numerical value of the error rate to plot an additional horizontal line. 
     # Find the index of best_error_rate in the sorted unique error rates
-
     error_rate_order = sorted(df["error_rate"].unique())  # Get sorted unique error rates
     best_error_rate_idx = error_rate_order.index(best_error_rate)  # Get position index
     return best_error_rate_idx, error_rate_order
@@ -294,16 +293,16 @@ def __(
     # Plot likelihoods and error rates
     with plot_style(figsize=(4.4, 2.5), ticklabelsize=12, labelsize=12):
 
-        
+
         # 1) Create figure & axes
         fig, ax = plt.subplots(figsize=(4.4, 2.5))
-        
+
         # 2) Prepare data for boxplot
         box_data = []
         for c in error_rate_order:
             subset = df.loc[df["error_rate"] == c, "tree_likelihood"]
             box_data.append(subset.dropna().values)  # dropna -> valid data only
-        
+
         # 3) Plot the boxplot with patch_artist=True so we can color the boxes
         bp = ax.boxplot(
             box_data,
@@ -312,15 +311,15 @@ def __(
             showfliers=False,
             widths=0.6
         )
-        
+
         # 4) Style the boxplot lines/faces
         for element in ['whiskers', 'caps', 'medians']:
             plt.setp(bp[element], color='black')  # or 'gray'
-        
+
         for box in bp['boxes']:
             box.set_facecolor('lightgray')   # fill color for the boxes
             box.set_edgecolor('black')       # outline color
-        
+
         # 5) Overlay invalid points at the same integer positions
         for i, e in enumerate(error_rate_order):
             sub = invalid_df[invalid_df["error_rate"] == e]
@@ -335,13 +334,13 @@ def __(
                 edgecolors='black',
                 label='NaN (No valid tree)' if i == 0 else ''  # label once
             )
-        
+
         # 6) Customize x-axis
         ax.set_xticks(tick_positions)
         ax.set_xticklabels([str(er) for er in selected_error_rates], rotation=90)
         ax.set_xlabel("Error rate")
         ax.set_ylabel("Normalized tree likelihood")
-        
+
         # 7) Add vertical line for best likelihood
         ax.axvline(
             x=best_error_rate_idx,  # must be an integer index into error_rates_order
@@ -352,11 +351,11 @@ def __(
         )
         #ax = plt.gca()
         ax.xaxis.set_tick_params(pad=-4)
-        
+
         #ax.legend()
         #plt.tight_layout()
-        #plt.show()
-        plt.savefig(f'../figures/fig3/likelihood_nan.svg', dpi=300, bbox_inches='tight', transparent=True)
+        plt.show()
+        #plt.savefig(f'../figures/fig3/likelihood_nan.svg', dpi=300, bbox_inches='tight', transparent=True)
     return ax, box, box_data, bp, c, e, element, fig, i, sub, subset, yvals
 
 
