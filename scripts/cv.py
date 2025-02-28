@@ -198,7 +198,7 @@ def kfold_mtscite(data_path, k=3, rate=0., seed=42, **kwargs):
 
     num_mutations = X.shape[0]
 
-    if num_mutations < 10: # don't learn
+    if num_mutations < 7: # don't learn
         return np.nan, np.nan
 
     # Generate a star tree to compare as a baseline
@@ -310,7 +310,7 @@ parser.add_argument('--directory', default='/cluster/work/bewi/members/pedrof/mt
 parser.add_argument('--mtscite_bin_path', default='/cluster/work/bewi/members/pedrof/mtscite/mt-SCITE-main/mtscite')
 parser.add_argument('-l', default=200000, type=int, help="Number of MCMC iterations")
 parser.add_argument('-k', default=3, type=int, help="Number of CV folds")
-parser.add_argument('-r', default=10, type=int, help="Number of repetitions of the CV scheme for each error rate")
+parser.add_argument('-r', default=3, type=int, help="Number of repetitions of the CV scheme for each error rate")
 parser.add_argument('-o', default=".", help="Output directory")
 parser.add_argument('-n', default="True", type=bool, help="Whether (T) or not (F) the tree scores should be normalised by the star tree score")
 
