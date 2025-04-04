@@ -17,6 +17,7 @@ We also provide notebooks and scripts to perform an end-to-end tree inference an
 ### Environment
 ```
 conda create -n mtSCITE python=3.10
+conda activate mtSCITE
 conda install -c conda-forge biopython
 conda install -c anaconda pandas
 conda install -c anaconda scipy
