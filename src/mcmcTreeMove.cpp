@@ -31,7 +31,7 @@ int* proposeNewTree(vector<double> moveProbs, int n, bool** currTreeAncMatrix, i
 
 	int* propTreeParVec = NULL;
 	int movetype = sampleRandomMove(moveProbs);      // pick the move type
-	//cout << "move type: " << movetype << "\n";
+	// cout << "move type: " << movetype << "\n";
 	nbhcorrection = 1;                               // reset the neighbourhood correction
 
 	if(movetype==1){       /* prune and re-attach */

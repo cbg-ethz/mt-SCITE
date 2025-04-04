@@ -100,7 +100,12 @@ int main(int argc, char* argv[])
     cout << endl;
     print_doubleMatrix(logRefLL, 4, 5);
     //getchar();
-
+    
+    if (n==1) {
+        defaultMoveProbs[0] = 1.0;     // moves: change beta / prune&re-attach / swap node labels / swap subtrees
+        defaultMoveProbs[1] = 0.0;
+		defaultMoveProbs[2] = 0.0;
+    }
     vector<double> moveProbs = setMoveProbs();
 //	double* errorRates = getErrorRatesArray(fd, ad1, ad2, cc);
 
