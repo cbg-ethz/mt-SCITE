@@ -1,6 +1,6 @@
 These scripts can help you set up for mt-SCITE analysis.
 
-1) The compute_mutation_probability.py script allows you to generate mutation probability matrices for a range of error rates, given your read count data are in numpy format. Check the script itself for further details.
+1) The compute_mutation_probability.py script allows you to generate mutation probability matrices for a range of error rates, given your read count data are in numpy format. Check the script itself for further details, especially the input checks tell you exactly what format is expected. Note that you should provide a reference file that contains the reference alleles for all those positions for which you provide read count data. 
 
 2) The cv.py script allows you to learn an error rate using k-fold cross validation.
 
