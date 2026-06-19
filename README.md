@@ -60,3 +60,6 @@ Run mt-SCITE with this command:
 where 
 `pmat.csv` is the mutation probability matrix generated with the learned error rate, `n_mutations` is the number of rows in `pmat.csv` and `n_samples` is the number of columns in `pmat.csv`.
 
+### Choosing the number of runs and chain length
+
+We advise running mt-SCITE several times (in our experimental analyses, we used 10 repetitions). Each repetition starts mt-SCITE from a different starting point, or you can directly specify different starting seeds using -seed. Then, check that the best-scoring region is recovered by all chains. If the chains land in very different log-likelihood areas, increase the chain length (we used 10^6). Because the bottleneck is the number of mutations rather than cells, the search budget should be scaled with mutation count.
